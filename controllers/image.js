@@ -8,7 +8,7 @@ const path = require("path");
 const fs = require("fs");
 const fsEx = require("fs-extra");
 const { awaitToResponse } = require("../middlewares/helper");
-const image = require("../models/image");
+// const image = require("../models/image");
 
 exports.createImage = async (req, res) => {
   const { _id: id } = req.user;
@@ -287,7 +287,7 @@ exports.deleteImage = async (req, res) => {
 
 exports.updateImage = async (req, res) => {
   const { imageId } = req.params;
-  const { name } = req.body;
+  const { updateName } = req.body;
   const { _id: id } = req.user;
 
   if (!isValidObjectId(imageId))
@@ -295,13 +295,14 @@ exports.updateImage = async (req, res) => {
   if (!isValidObjectId(id))
     return res.status(401).json({ error: "Invalid User ID" });
 
-  if (!name) return res.status(401).json({ error: 'Missing "name" field!' });
+  if (!updateName)
+    return res.status(401).json({ error: 'Missing "name" field!' });
 
   const image = await Image.findOne({ owner: id, _id: imageId });
 
   console.log(image);
 
-  image.name = name;
+  image.name = updateName;
   await image.save();
 
   res.status(200).json({ success: "Update Image successfully!" });
