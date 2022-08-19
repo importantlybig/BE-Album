@@ -1,0 +1,1 @@
+Do có một folder chứa các ảnh được phân giải từ các thư viện nên khi Clone về sẽ bị thiếu vì em đã đặt nó trong ignore file. Để sử dụng được ứng dụng anh chị vui lòng tạo thêm folder tên "imageContainer" để tránh trường hợp lỗi
