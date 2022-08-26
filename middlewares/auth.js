@@ -13,8 +13,8 @@ exports.isAuth = async (req, res, next) => {
     //console.log(process.env.JWT_SECRET);
     const decode = jwt.verify(getToken, process.env.JWT_ACCESS_TOKEN_SECRET);
 
-    console.log("decode");
-    console.log(decode);
+    // console.log("decode");
+    // console.log(decode);
 
     const { userId } = decode;
 
@@ -30,3 +30,10 @@ exports.isAuth = async (req, res, next) => {
     res.status(401).json({ error: error.message });
   }
 };
+
+// const express = require("express");
+// const app = express();
+
+// app.use("/static", express.static("public"));
+
+// app.listen(3000);

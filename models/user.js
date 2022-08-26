@@ -22,6 +22,9 @@ const userSchema = mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    base32Secret: {
+      type: String,
+    },
   },
   { timestamps: true }
 );

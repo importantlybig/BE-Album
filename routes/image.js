@@ -1,6 +1,7 @@
 const express = require("express");
 const {
-  createImage,
+  uploadSingleImage,
+  uploadMultipleImages,
   getImageByAlbum,
   getImage,
   getImageById,
@@ -18,8 +19,15 @@ router.post(
   "/upload-single/:albumId",
   isAuth,
   uploadImage.single("image"),
-  createImage
+  uploadSingleImage
 );
+router.post(
+  "/upload-multiple/:albumId",
+  isAuth,
+  uploadImage.array("images"),
+  uploadMultipleImages
+);
+
 router.get("/image-by-album/:albumId", getImageByAlbum);
 router.get("/getImage/", getImage);
 router.get("/image-by-id/:imageId", isAuth, getImageById);

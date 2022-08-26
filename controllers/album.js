@@ -1,4 +1,5 @@
 const { isValidObjectId } = require("mongoose");
+const { getCountImages } = require("../middlewares/helper");
 const Album = require("../models/album");
 
 exports.createAlbum = async (req, res) => {
@@ -27,7 +28,7 @@ exports.getAlbumByOwner = async (req, res) => {
     return res.status(401).json({ error: "Not found!" });
 
   //const ownerResult = await (await Album.find({owner: ownerId}).select('-owner'))
-  const ownerResult = await await Album.find({ owner: ownerId })
+  const ownerResult = await Album.find({ owner: ownerId })
     .populate("images")
     .populate({
       path: "owner",

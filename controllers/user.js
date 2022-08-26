@@ -137,15 +137,22 @@ exports.refreshToken = async (req, res) => {
 };
 
 exports.enableTwoFactorAuth = async (req, res) => {
-  //   const { _id: id } = req.user;
+  const { _id: id } = req.user;
+
+  if (!isValidObjectId(id))
+    return res.status(401).json({ error: "Invalid User!" });
+
+  const user = await User.findById(id);
 
   //   const user = await User.findById(id);
   const generateSecret = speakeasy.generateSecret();
   //   console.log(generateSecret);
   //   user.base32Secret = generateSecret.base32;
-  qrcode.toDataURL(generateSecret.otpauth_url, (error, qrImage) => {
+  qrcode.toDataURL(generateSecret.otpauth_url, async (error, qrImage) => {
     const renderQR = `<img src='${qrImage}' alt='QR_code_scan' />`;
     if (!error) {
+      user.base32Secret = generateSecret.base32;
+      await user.save();
       return res.json({ renderQR, base32Secret: generateSecret.base32 });
     } else {
       return res.json({ error: error });

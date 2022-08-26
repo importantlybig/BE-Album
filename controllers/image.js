@@ -1,22 +1,34 @@
-// const User = require('../models/user')
 const Album = require("../models/album");
 const Image = require("../models/image");
-const { isValidObjectId } = require("mongoose");
-const sharp = require("sharp");
-const unzipper = require("unzipper");
-const path = require("path");
+
 const fs = require("fs");
 const fsEx = require("fs-extra");
-const { awaitToResponse } = require("../middlewares/helper");
-// const image = require("../models/image");
 
-exports.createImage = async (req, res) => {
+const { isValidObjectId } = require("mongoose");
+const {
+  handleSingleImageWithSharp,
+  handleMultipleImagesWithSharp,
+} = require("../middlewares/helper");
+
+//PM2
+const SingleUploadQueue = require("../queues/singleUpload-Woker1");
+// const {
+//   sendValueToMultipleUploadQueue,
+// } = require("../queues/multipleUpload-Woker2");
+
+exports.uploadSingleImage = async (req, res) => {
   const { _id: id } = req.user;
   const { albumId } = req.params;
   const { name } = req.body;
 
   const { file } = req;
 
+  console.log("----------type of file");
+  console.log(typeof file);
+
+  // const singleFile = file
+
+  console.log("--file in line 33");
   console.log(file);
 
   const pathOfFile = file.path;
@@ -26,8 +38,6 @@ exports.createImage = async (req, res) => {
   pathEdit = pathEdit.split(".")[0] + ".png";
 
   // console.log(`Path edit ${pathEdit}`);
-
-  console.log(file);
 
   if (!id) return res.status(401).json({ error: "User not found!" });
 
@@ -40,73 +50,11 @@ exports.createImage = async (req, res) => {
     return res.status(401).json({ error: "Image name is missing!" });
   }
 
-  const { originalname, path: pathName, filename } = file;
+  const sharpResultInfo = await handleSingleImageWithSharp(file);
+  // const sharpResultInfo = SingleUploadQueue(file);
 
-  // console.log(`30: path name: ${pathName}`);
-  // console.log(`31: file name: ${filename}`);
-
-  //Sharp here
-  const sharpResultInfro = await sharp(pathName)
-    .toFormat("png")
-    .tile({
-      size: 256,
-      overlap: 0,
-      container: "fs",
-      layout: "dz",
-    })
-    .toFile("imageContainer/" + filename.split(".")[0] + ".zip");
-
-  //Unzip folder which created by Sharp using unzipper
-  fs.createReadStream("imageContainer/" + filename.split(".")[0] + ".zip").pipe(
-    unzipper.Extract({ path: "imageContainer/" })
-  );
-
-  // //---------------Delete file ZIPPPPPPPPPPP
-  const pathNameBeforeDelete = path.join(__dirname, `../imageContainer/`);
-  fs.stat(pathNameBeforeDelete, function (err, stats) {
-    //here we got all information of file in stats variable
-    //console.log(stats);
-
-    if (err) {
-      return console.error(err);
-    }
-
-    const pathToDelete =
-      path.join(__dirname, `../imageContainer/`) +
-      filename.split(".")[0] +
-      ".zip";
-
-    fs.unlink(pathToDelete, function (err) {
-      if (err) return console.log(err);
-      console.log("file deleted successfully");
-    });
-  });
-
-  const oldPathMove = path.join(__dirname, `../imageContainer/`) + filename;
-  const newPathMove =
-    path.join(__dirname, `../imageContainer/`) +
-    filename.split(".")[0] +
-    "/" +
-    filename.split(".")[0] +
-    ".png";
-  const fileMoveExist = path.join("imageContainer/") + filename.split(".")[0];
-  // console.log(`Old: ${oldPathMove}`);
-  // console.log(`New: ${newPathMove}`);
-  // console.log(`dir exist: ${fileMoveExist}`);
-
-  await awaitToResponse(1000);
-  // .then(() => {
-  //-------------------check if directory exists
-  if (fs.existsSync(fileMoveExist)) {
-    console.log("Directory exists!");
-    fs.rename(oldPathMove, newPathMove, function (err) {
-      if (err) throw err;
-      console.log("Successfully renamed - AKA moved!");
-    });
-  } else {
-    console.log("Directory not found.");
-  }
-  // });
+  // console.log("result in worker");
+  // console.log(sharpResultInfo);
 
   const album = await Album.findById(albumId);
 
@@ -114,8 +62,8 @@ exports.createImage = async (req, res) => {
     name: name,
     path: pathEdit,
     owner: id,
-    width: sharpResultInfro.width,
-    height: sharpResultInfro.height,
+    width: sharpResultInfo.width,
+    height: sharpResultInfo.height,
     parentAlbum: albumId,
   });
   await newImage.save();
@@ -128,12 +76,67 @@ exports.createImage = async (req, res) => {
       id: newImage._id,
       name: newImage.name,
       path: newImage.Path,
-      width: sharpResultInfro.width,
-      height: sharpResultInfro.height,
+      width: sharpResultInfo.width,
+      height: sharpResultInfo.height,
       owner: newImage.owner,
       parentAlbum: newImage.parentAlbum,
     },
   });
+};
+
+exports.uploadMultipleImages = async (req, res) => {
+  const { _id: id } = req.user;
+  const { albumId } = req.params;
+  const { multipleNames } = req.body;
+
+  console.log(multipleNames);
+
+  const parse = JSON.parse(multipleNames);
+
+  console.log("-------parrse name");
+  console.log(parse);
+
+  const { files } = req;
+
+  console.log(files);
+
+  if (!id) return res.status(401).json({ error: "User not found!" });
+
+  if (!albumId) return res.status(401).json({ error: "Album not found!" });
+
+  if (!files)
+    return res.status(401).json({ error: "Upload failed, try again!" });
+
+  if (!multipleNames) {
+    return res.status(401).json({ error: "Image name is missing!" });
+  }
+
+  for (let i = 0; i < files.length; i++) {
+    // let pathEdit = [];
+    let pathEdit = files[i].path.split("\\")[1];
+    pathEdit = pathEdit.split(".")[0] + ".png";
+
+    const sharpResult = await handleMultipleImagesWithSharp(files[i]);
+
+    const album = await Album.findById(albumId);
+
+    const newImage = new Image({
+      name: parse[i],
+      path: pathEdit,
+      owner: id,
+      width: sharpResult.width,
+      height: sharpResult.height,
+      parentAlbum: albumId,
+    });
+    await newImage.save();
+
+    album.images.push(newImage._id);
+    await album.save();
+  }
+
+  return res
+    .status(201)
+    .json({ success: "Upload multiple images successfully!" });
 };
 
 exports.getImage = async (req, res) => {

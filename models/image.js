@@ -27,24 +27,10 @@ const imageSchema = mongoose.Schema(
       required: true,
     },
     ShareTo: [
-      // {
-      //   user: {
-      //     type: ObjectId,
-      //     ref: "User",
-      //   },
-      //   image: {
-      //     type: ObjectId,
-      //     ref: "Image",
-      //   },
-      // },
       {
         type: ObjectId,
         ref: "User",
       },
-      // {
-      //   type: ObjectId,
-      //   ref: "Image",
-      // },
     ],
     parentAlbum: {
       type: ObjectId,
